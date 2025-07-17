@@ -2,7 +2,7 @@
 import { useEffect } from 'react'
 import { Flex, Button, Text, Box } from '@chakra-ui/react'
 import { useAgents } from '../../utils/useCMSHooks'
-import Agent from '../components/agentgent'
+import Agent from '../components/agent'
 
 export default function Home() {
   const { data: agents, isLoading, error } = useAgents();
