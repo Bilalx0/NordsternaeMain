@@ -1,181 +1,178 @@
-'use client';
-
-import { useState, useEffect } from 'react';
-import { Flex, Button, Text } from '@chakra-ui/react';
-import PropertyListing from '../components/property_listing';
-import SearchSecondary from '../components/search_secondary';
-import SearchFilters from '../components/search_filters';
-import { useSearchParams } from 'next/navigation';
-import useSearch from '../../utils/useSearch';
-import useFirebaseCollection from '../../utils/useFirebaseCollection';
-import { useProperties } from '../../utils/useCMSHooks';
-
-// Helper function to normalize CMS data to match Firebase structure
-const normalizeCMSProperty = (cmsProperty) => ({
-  id: cmsProperty.id,
-  reference: cmsProperty.title || cmsProperty.reference || 'Untitled', // Map title to reference
-  isFeatured: cmsProperty.isFeatured || false, // Default to false if not provided
-  listingType: cmsProperty.listingType || 'sale', // Default to sale
-  propertyType: cmsProperty.propertyType || 'apartment', // Default to apartment
-  price: cmsProperty.price || 0,
-  sqfeetArea: cmsProperty.area || 0, // Map area to sqfeetArea
-  _updatedBy: {
-    timestamp: { seconds: cmsProperty.createdAt || Date.now() / 1000 }, // Map createdAt or use current time
-  },
-  source: 'cms', // Add source to distinguish CMS data
-});
+'use client'
+import { useState, useEffect, useCallback } from 'react'
+import { Flex, Button, Text } from '@chakra-ui/react'
+import PropertyListing from '../components/property_listing'
+import SearchFilters from '../components/search_filters'
+import { useSearchParams } from 'next/navigation'
+import { useProperties as useCMSProperties } from "../../utils/useCMSHooks"
 
 export default function Home() {
-  const { items, loadItemsWhereX } = useFirebaseCollection('properties');
-  const { searchResults, getSearchResults } = useSearch();
-  const { data: cmsProperties, isLoading: cmsLoading, error: cmsError } = useProperties();
-  const searchParams = useSearchParams();
-  const searchTerm = searchParams.get('search') || ' ';
-  const filterString = searchParams.get('filter') || 'isDisabled = false';
-  const showExclusive = searchParams.get('exclusiveProperties');
-  const showProperties = searchParams.get('showProperties');
-  const listingType = searchParams.get('listingType') || 'sale';
-  const propertyTypes = searchParams.get('propertyType') || 'apartment,villa,townhouse,duplex,penthouse';
-  const minPrice = searchParams.get('minPrice') || 100000;
-  const maxPrice = searchParams.get('maxPrice') || 999999999;
-  const bedrooms = searchParams.get('bedrooms') || 1;
-  const minArea = searchParams.get('minArea') || 0;
-  const maxArea = searchParams.get('maxArea') || 250000;
-  const amenities = searchParams.get('amenities')?.split(',') || [];
-  const [isOpen, setIsOpen] = useState(false);
-  const [sortBy, setSortBy] = useState('featured');
-  const [localItems, setLocalItems] = useState([]);
-  const [shownItems, setShownItems] = useState([]);
-  const [shownIndex, setShownIndex] = useState(1);
 
-  // Update shownItems when localItems or shownIndex changes
-  useEffect(() => {
-    setShownItems(localItems.slice(0, shownIndex * 12));
-  }, [localItems, shownIndex]);
+  // Only use the CMS properties hook
+  const searchParams = useSearchParams()
 
-  // Combine and filter Firebase and CMS data
-  useEffect(() => {
-    // Wait for both Firebase and CMS data to be available
-    if (!items || !cmsProperties) return;
+  const showExclusive = searchParams.get("exclusiveProperties")
+  const showProperties = searchParams.get("showProperties")
+  const listingType = searchParams.get("listingType") || "sale"
+  const propertyTypes = searchParams.get("propertyType")?.split(",") || ["apartment", "villa", "townhouse", "duplex", "penthouse"] // Default array for split
+  const minPrice = searchParams.get("minPrice") || 100000
+  const maxPrice = searchParams.get("maxPrice") || 999999999
+  const bedrooms = searchParams.get("bedrooms") || 1
+  const minArea = searchParams.get("minArea") || 0
+  const maxArea = searchParams.get("maxArea") || 250000
+  const amenities = searchParams.get("amenities")?.split(",") || []
 
-    // Normalize CMS properties to match Firebase structure
-    const normalizedCMSProperties = cmsProperties.map(normalizeCMSProperty);
+  // Add a refresh key to force re-fetch
+  const [refreshKey, setRefreshKey] = useState(0)
 
-    // Combine Firebase and CMS data
-    const combinedItems = [
-      ...items.map(item => ({ ...item, source: 'firebase' })),
-      ...normalizedCMSProperties,
-    ];
-
-    // Apply search and filters to combined data
-    const filteredItems = combinedItems.filter(item => {
-      const matchesListingType = item.listingType === listingType;
-      const matchesPropertyType = propertyTypes.split(',').includes(item.propertyType);
-      const matchesPrice = item.price >= minPrice && item.price <= maxPrice;
-      const matchesArea = item.sqfeetArea >= minArea && item.sqfeetArea <= maxArea;
-      const matchesBedrooms = item.bedrooms >= bedrooms;
-      const matchesAmenities = amenities.length === 0 || amenities.every(amenity => item.amenities?.includes(amenity));
-      const matchesSearch = searchTerm === ' ' || item.reference.toLowerCase().includes(searchTerm.toLowerCase());
-      const isNotDisabled = !item.isDisabled;
-
-      return (
-        matchesListingType &&
-        matchesPropertyType &&
-        matchesPrice &&
-        matchesArea &&
-        matchesBedrooms &&
-        matchesAmenities &&
-        matchesSearch &&
-        isNotDisabled
-      );
-    });
-
-    // Sort by featured (default)
-    const sortedItems = filteredItems.sort((a, b) => !!b.isFeatured - !!a.isFeatured);
-    setLocalItems(sortedItems);
-  }, [items, cmsProperties, searchParams]);
-
-  // Handle exclusive or specific property type filtering
-  useEffect(() => {
-    if (showExclusive) {
-      // Filter Firebase data for exclusive properties
-      loadItemsWhereX('isExclusive', true);
-    } else if (showProperties) {
-      // Filter Firebase data for specific property type
-      loadItemsWhereX('propertyType', showProperties);
-    } else {
-      // Apply search to Firebase data
-      getSearchResults(searchTerm, filterString, amenities);
-    }
-  }, [searchParams]);
-
-  // Sorting function
-  const getSorted = (sortType) => {
-    let sortedItems = [...localItems];
-    if (sortType === 'featured'){
-       sortedItems.sort((a, b) => !!b.isFeatured - !!a.isFeatured);
-    } else if (sortType === 'latest') {
-      sortedItems.sort((a, b) => b._updatedBy.timestamp.seconds - a._updatedBy.timestamp.seconds);
-    }
-    setSortBy(sortType);
-    setLocalItems(sortedItems);
+  // Construct query parameters for the CMS API based on searchParams
+  const queryParams = {
+    listingType,
+    propertyType: propertyTypes.join(","), // Rejoin for the API call
+    minPrice,
+    maxPrice,
+    bedrooms,
+    minArea,
+    maxArea,
+    isExclusive: showExclusive === "true" ? true : undefined, // Only include if truthy
+    propertyTypeFilter: showProperties || undefined, // Use showProperties if it exists
   };
 
-  // Load more items for pagination
+  const { data: cmsProperties, isLoading: isLoadingCMS, error: cmsError, refetch } = useCMSProperties(queryParams)
+
+  const [isOpen, setIsOpen] = useState(false)
+  const [sortBy, setSortBy] = useState("featured")
+  const [localItems, setLocalItems] = useState([])
+  const [shownItems, setShownItems] = useState([])
+  const [shownIndex, setShownIndex] = useState(1)
+
+  // Force refresh function
+  const forceRefresh = useCallback(() => {
+    setRefreshKey(prev => prev + 1)
+    if (refetch) {
+      refetch()
+    }
+    console.log("Force refresh triggered")
+  }, [refetch])
+
+  // Debugging/Logging: Log errors for CMS
+  useEffect(() => {
+    if (cmsError) {
+      console.error("Error fetching properties from CMS:", cmsError)
+    }
+  }, [cmsError])
+
+  useEffect(() => {
+    if (cmsProperties) {
+      console.log(`CMS properties loaded: ${cmsProperties.length}`)
+      console.log("Raw CMS data:", cmsProperties) // Debug log
+      setLocalItems(cmsProperties.sort((a, b) => !!b.isFeatured - !!a.isFeatured))
+    }
+  }, [cmsProperties]) // Only depends on cmsProperties now
+
+  // Update shownItems based on localItems and shownIndex
+  useEffect(() => {
+    setShownItems(localItems.slice(0, shownIndex * 12))
+    console.log(`Shown items updated: ${shownItems.length}`)
+  }, [localItems, shownIndex])
+
   const loadMore = () => {
-    setShownItems(localItems.slice(0, (shownIndex + 1) * 12));
-    setShownIndex(shownIndex + 1);
-  };
+    // Only load more if there are more items to show from localItems
+    if (shownIndex * 12 < localItems.length) {
+      setShownIndex(prevIndex => prevIndex + 1)
+      console.log(`Loading more items. New shownIndex: ${shownIndex + 1}`)
+    } else {
+      console.log("No more items to load.")
+    }
+  }
+
+  useEffect(() => {
+    console.log("Search params updated. New API call might be triggered by useCMSProperties.")
+  }, [searchParams, listingType, bedrooms, propertyTypes, minPrice, maxPrice, minArea, maxArea, showExclusive, showProperties]);
+
+  const getSorted = useCallback((sortType) => {
+    let sortedItems = [...localItems]
+    if (sortType === "featured") {
+      sortedItems.sort((a, b) => !!b.isFeatured - !!a.isFeatured)
+    } else if (sortType === "latest") {
+      sortedItems.sort((a, b) => {
+        // Assuming your CMS properties will also have `updatedAt`
+        // or a similar timestamp field.
+        const timestampA = (a.updatedAt ? new Date(a.updatedAt).getTime() : 0);
+        const timestampB = (b.updatedAt ? new Date(b.updatedAt).getTime() : 0);
+        return timestampB - timestampA;
+      })
+    }
+    setSortBy(sortType)
+    setLocalItems(sortedItems)
+    console.log(`Items sorted by: ${sortType}`)
+  }, [localItems]); // Added localItems to dependency array for useCallback
+
+  // Show loading state for CMS
+  if (isLoadingCMS) {
+    return (
+      <Flex direction="column" justify="center" align="center" h="100vh">
+        <Text>Loading properties...</Text> {/* Simplified text */}
+      </Flex>
+    )
+  }
+
+  // Handle error state
+  if (cmsError) {
+    return (
+      <Flex direction="column" justify="center" align="center" h="100vh">
+        <Text color="red.500">Error loading properties: {cmsError.message || "An unknown error occurred."}</Text>
+      </Flex>
+    )
+  }
+  
+  // Show "No Properties Found" if localItems is empty after loading
+  if (!isLoadingCMS && !cmsError && localItems.length === 0) {
+    return (
+      <Flex direction="column" justify="center" align="center" h="100vh">
+        <Text variant="articleTitle">No Properties Found.</Text>
+        <Text fontSize="12px">Try adjusting your filters.</Text>
+      </Flex>
+    )
+  }
 
   return (
-    <Flex direction="column" justify="center" align="center" w={{ base: '100vw', md: '80vw', lg: '933px' }} mx="auto" my={8}>
+    <Flex direction="column" justify="center" align="center" w={{ base: "100vw", md: "80vw", lg: "933px" }} mx="auto" my={8}>
       <SearchFilters openFilters={isOpen} onClose={() => setIsOpen(false)} updateResults={setLocalItems} />
-      <Flex direction="column" w={{ base: '100vw', md: '80vw', lg: '946px' }} mx="auto">
+      <Flex direction="column" w={{ base: "100vw", md: "80vw", lg: "946px" }} mx="auto">
         <Flex direction="column" align="center">
           <Text variant="articleTitle">Properties for {listingType}</Text>
-          <Text fontSize="12px">{localItems.length}{'+ PROPERTIES'}</Text>
+          <Text fontSize="12px">
+            {localItems.length > 0 ? `${localItems.length}+ PROPERTIES` : "No Properties Found."}
+          </Text>
         </Flex>
 
         <Flex align="center" justify="space-between" m={4} mb={2} grow="grow">
-          <Button size="s" variant="bright" onClick={() => setIsOpen(true)}>
-            FILTERS
+          <Button size="s" variant="bright" onClick={() => setIsOpen(true)}>FILTERS</Button>
+          
+          {/* Add refresh button for debugging */}
+          <Button size="s" variant="outline" onClick={forceRefresh}>
+            REFRESH ({localItems.length})
           </Button>
+          
           <Flex align="center" alignSelf="center">
             <Text mx={2} fontSize="12px">Sort By</Text>
             <Button mx={2} size="sm" variant="linkButton" onClick={() => getSorted('featured')}>
-              <Text fontSize="10px" variant={sortBy === 'featured' ? 'selected' : 'justRoboto'}>
-                Featured
-              </Text>
+              <Text fontSize="10px" variant={sortBy === 'featured' ? 'selected' : 'justRoboto'}>Featured</Text>
             </Button>
             <Button mx={2} size="sm" variant="linkButton" onClick={() => getSorted('latest')}>
-              <Text fontSize="10px" variant={sortBy === 'latest' ? 'selected' : 'justRoboto'}>
-                New to Market
-              </Text>
+              <Text fontSize="10px" variant={sortBy === 'latest' ? 'selected' : 'justRoboto'}>New to Market</Text>
             </Button>
           </Flex>
         </Flex>
 
         <Flex align="center" justify="center" wrap="wrap" my={2} alignSelf="center" grow="grow">
-          {shownItems.length > 0 ? (
-            shownItems.map((item) => (
-              <PropertyListing
-                vspace={4}
-                wide={{ base: 'true', md: 'false' }}
-                key={item.id}
-                reference={item.reference}
-                listing={item}
-              />
-            ))
-          ) : (
-            <Text>No Properties Found.</Text>
-          )}
-          {shownIndex * 12 < localItems.length && (
-            <Button variant="white" my={4} onClick={loadMore}>
-              Load more
-            </Button>
-          )}
+          {shownItems.length > 0 && shownItems.map((item) => (
+            <PropertyListing vspace={4} wide={{ base: "true", md: "false" }} key={item.reference} listing={item} reference={item.reference} />
+          ))}
+          {(shownIndex * 12 < localItems.length) && <Button variant="white" my={4} onClick={loadMore}>Load more</Button>}
         </Flex>
       </Flex>
     </Flex>
-  );
+  )
 }
