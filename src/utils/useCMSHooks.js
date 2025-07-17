@@ -1,60 +1,149 @@
-'use client'; // Added 'use client' directive as it's a client-side hook file
+'use client';
 import { useQuery, useMutation } from '@tanstack/react-query';
 
 async function fetchCmsDataById(resource, id) {
-  if (!id) return null;
-  const response = await fetch(`/api/cms/${resource}/${id}`); // Assumes /api/cms/properties/123
+  if (!id) {
+    console.warn(`[fetchCmsDataById] No ID provided for resource: ${resource}`);
+    return null;
+  }
+  const url = `/api/cms/${resource}/${id}`;
+  console.log(`[fetchCmsDataById] Fetching from URL: ${url}`);
+  const response = await fetch(url);
   if (!response.ok) {
+    console.error(`[fetchCmsDataById] Failed to fetch ${resource} with ID ${id}: ${response.status} ${response.statusText}`);
     throw new Error(`Failed to fetch ${resource} with ID ${id}: ${response.statusText}`);
   }
-  return response.json();
+  const data = await response.json();
+  console.log(`[fetchCmsDataById] Fetched data for ${resource}/${id}:`, data);
+  return data;
 }
 
 async function fetchCmsDataByField(resource, fieldName, fieldValue) {
-  if (!fieldValue) return null;
-  // Assumes API supports query parameters for filtering, e.g., /api/cms/properties?reference=NS123
-  const response = await fetch(`/api/cms/${resource}?${fieldName}=${encodeURIComponent(fieldValue)}`);
+  if (!fieldValue) {
+    console.warn(`[fetchCmsDataByField] No ${fieldName} provided for resource: ${resource}`);
+    return null;
+  }
+  const url = `/api/cms/${resource}?${fieldName}=${encodeURIComponent(fieldValue)}`;
+  console.log(`[fetchCmsDataByField] Fetching from URL: ${url}`);
+  const response = await fetch(url);
+  console.log(`[fetchCmsDataByField] Response status: ${response.status} ${response.statusText}`);
   if (!response.ok) {
+    console.error(`[fetchCmsDataByField] Failed to fetch ${resource} by ${fieldName}=${fieldValue}: ${response.status} ${response.statusText}`);
     throw new Error(`Failed to fetch ${resource} by ${fieldName} ${fieldValue}: ${response.statusText}`);
   }
   const data = await response.json();
-  // If the API returns an array for a filtered search, return the first item
-  return data.length > 0 ? data[0] : null;
+  console.log(`[fetchCmsDataByField] Raw response for ${resource} by ${fieldName}=${fieldValue}:`, data);
+
+  // Handle both object and array responses
+  if (data && typeof data === 'object') {
+    if (Array.isArray(data)) {
+      // If response is an array, return the first item with matching fieldValue or null
+      const matchingItem = data.find(item => item[fieldName] === fieldValue) || null;
+      console.log(`[fetchCmsDataByField] Found ${matchingItem ? 'matching' : 'no matching'} item in array for ${fieldName}=${fieldValue}:`, matchingItem);
+      return matchingItem;
+    }
+    // If response is an object and matches fieldValue, return it
+    if (data[fieldName] === fieldValue) {
+      console.log(`[fetchCmsDataByField] Returning single object for ${fieldName}=${fieldValue}:`, data);
+      return data;
+    }
+    console.warn(`[fetchCmsDataByField] Single object does not match ${fieldName}=${fieldValue}:`, data);
+    return null;
+  }
+  console.warn(`[fetchCmsDataByField] No valid data for ${fieldName}=${fieldValue}:`, data);
+  return null;
 }
 
-// Updated: Fetch all properties with optional query parameters
+// Fetch single property by reference
+export function usePropertyByReference(reference) {
+  return useQuery({
+    queryKey: ['propertyByReference', reference],
+    queryFn: async () => {
+      if (!reference) {
+        console.warn('[usePropertyByReference] No reference provided');
+        throw new Error('No reference provided');
+      }
+      const data = await fetchCmsDataByField('properties', 'reference', reference);
+      if (!data) {
+        console.warn(`[usePropertyByReference] No property found for reference: ${reference}`);
+        throw new Error(`No property found for reference: ${reference}`);
+      }
+      console.log(`[usePropertyByReference] Fetched property for reference: ${reference}`, data);
+      return data;
+    },
+    enabled: !!reference,
+    staleTime: 0,
+    cacheTime: 0,
+    retry: 1,
+  });
+}
+
+// Fetch single agent by name (case-insensitive)
+export function useAgentByName(name) {
+  return useQuery({
+    queryKey: ['agentByName', name?.toLowerCase()],
+    queryFn: async () => {
+      if (!name) {
+        console.warn('[useAgentByName] No name provided');
+        return null;
+      }
+      const data = await fetchCmsDataByField('agents', 'name', name);
+      if (!data) {
+        console.warn(`[useAgentByName] No agent found for name: ${name}`);
+      }
+      return data;
+    },
+    enabled: !!name,
+    staleTime: 0,
+    cacheTime: 0,
+    retry: 1,
+  });
+}
+
+// Fetch single agent by license number
+export function useAgentByLicenseNumber(licenseNumber) {
+  return useQuery({
+    queryKey: ['agentByLicenseNumber', licenseNumber],
+    queryFn: async () => {
+      if (!licenseNumber) {
+        console.warn('[useAgentByLicenseNumber] No licenseNumber provided');
+        return null;
+      }
+      const data = await fetchCmsDataByField('agents', 'licenseNumber', licenseNumber);
+      if (!data) {
+        console.warn(`[useAgentByLicenseNumber] No agent found for licenseNumber: ${licenseNumber}`);
+      }
+      return data;
+    },
+    enabled: !!licenseNumber,
+    staleTime: 0,
+    cacheTime: 0,
+    retry: 1,
+  });
+}
+
+// Other hooks remain unchanged
 export function useProperties(queryParams = {}) {
   return useQuery({
-    // Include queryParams in the query key so React Query knows when to refetch
     queryKey: ['properties', queryParams],
     queryFn: async () => {
-      // Build query string from parameters
       const searchParams = new URLSearchParams();
-      
-      // Add each parameter to the search params if it exists
       Object.entries(queryParams).forEach(([key, value]) => {
         if (value !== undefined && value !== null && value !== '') {
           searchParams.append(key, value);
         }
       });
-      
       const queryString = searchParams.toString();
       const url = queryString ? `/api/cms/properties?${queryString}` : '/api/cms/properties';
-      
-      console.log('Fetching from URL:', url); // Debug log
-      
+      console.log('[useProperties] Fetching from URL:', url);
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch all properties');
-      
       const data = await response.json();
-      console.log('Fetched properties count:', data.length); // Debug log
-      
+      console.log('[useProperties] Fetched properties count:', data.length);
       return data;
     },
-    // Optional: Configure caching behavior
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    cacheTime: 1000 * 60 * 10, // 10 minutes
-    // Force refetch when query params change
+    staleTime: 1000 * 60 * 5,
+    cacheTime: 1000 * 60 * 10,
     refetchOnMount: true,
   });
 }
@@ -63,38 +152,32 @@ export function useSimilarProperties(propertyType, excludeReference = null) {
   return useQuery({
     queryKey: ['similarProperties', propertyType, excludeReference],
     queryFn: async () => {
-      if (!propertyType) return [];
-
+      if (!propertyType) {
+        console.warn('[useSimilarProperties] No propertyType provided');
+        return [];
+      }
       const searchParams = new URLSearchParams();
       searchParams.append('propertyType', propertyType);
-
       if (excludeReference) {
         searchParams.append('excludeReference', excludeReference);
       }
-
       const queryString = searchParams.toString();
       const url = `/api/cms/properties?${queryString}`;
-
-      console.log('Fetching similar properties from URL:', url); // Debug log
-
+      console.log('[useSimilarProperties] Fetching from URL:', url);
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`Failed to fetch similar properties: ${response.statusText}`);
       }
-
       const data = await response.json();
-      console.log('Fetched similar properties count:', data.length); // Debug log
-
+      console.log('[useSimilarProperties] Fetched similar properties count:', data.length);
       return data;
     },
-    enabled: !!propertyType, // Only fetch if propertyType is provided
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    cacheTime: 1000 * 60 * 10, // 10 minutes
+    enabled: !!propertyType,
+    staleTime: 1000 * 60 * 5,
+    cacheTime: 1000 * 60 * 10,
   });
 }
 
-
-// Fetch all agents
 export function useAgents() {
   return useQuery({
     queryKey: ['agents'],
@@ -106,7 +189,6 @@ export function useAgents() {
   });
 }
 
-// Fetch all articles
 export function useArticles() {
   return useQuery({
     queryKey: ['articles'],
@@ -118,7 +200,6 @@ export function useArticles() {
   });
 }
 
-// Fetch all banner-highlights
 export function useBannerHighlights() {
   return useQuery({
     queryKey: ['banner-highlights'],
@@ -130,7 +211,6 @@ export function useBannerHighlights() {
   });
 }
 
-// Fetch all developers
 export function useDevelopers() {
   return useQuery({
     queryKey: ['developers'],
@@ -142,7 +222,6 @@ export function useDevelopers() {
   });
 }
 
-// Fetch all developments
 export function useDevelopments() {
   return useQuery({
     queryKey: ['developments'],
@@ -154,7 +233,6 @@ export function useDevelopments() {
   });
 }
 
-// Fetch all enquiries
 export function useEnquiries() {
   return useQuery({
     queryKey: ['enquiries'],
@@ -166,7 +244,6 @@ export function useEnquiries() {
   });
 }
 
-// Fetch all neighborhoods
 export function useNeighborhoods() {
   return useQuery({
     queryKey: ['neighborhoods'],
@@ -178,7 +255,6 @@ export function useNeighborhoods() {
   });
 }
 
-// Fetch all sitemaps
 export function useSitemaps() {
   return useQuery({
     queryKey: ['sitemaps'],
@@ -190,25 +266,14 @@ export function useSitemaps() {
   });
 }
 
-// Fetch single property by id
 export function useSingleProperty(id) {
   return useQuery({
     queryKey: ['property', id],
     queryFn: () => fetchCmsDataById('properties', id),
-    enabled: !!id, // Only fetch if id is provided
+    enabled: !!id,
   });
 }
 
-// Fetch single property by reference (most common for properties)
-export function usePropertyByReference(reference) {
-  return useQuery({
-    queryKey: ['propertyByReference', reference],
-    queryFn: () => fetchCmsDataByField('properties', 'reference', reference),
-    enabled: !!reference,
-  });
-}
-
-// Fetch single agent by id
 export function useSingleAgent(id) {
   return useQuery({
     queryKey: ['agent', id],
@@ -217,25 +282,6 @@ export function useSingleAgent(id) {
   });
 }
 
-// Fetch single agent by license number (often unique)
-export function useAgentByLicenseNumber(licenseNumber) {
-  return useQuery({
-    queryKey: ['agentByLicenseNumber', licenseNumber],
-    queryFn: () => fetchCmsDataByField('agents', 'licenseNumber', licenseNumber),
-    enabled: !!licenseNumber,
-  });
-}
-
-// Fetch single agent by name (be cautious, names might not be unique)
-export function useAgentByName(name) {
-  return useQuery({
-    queryKey: ['agentByName', name],
-    queryFn: () => fetchCmsDataByField('agents', 'name', name),
-    enabled: !!name,
-  });
-}
-
-// Fetch single article by id
 export function useSingleArticle(id) {
   return useQuery({
     queryKey: ['article', id],
@@ -244,7 +290,6 @@ export function useSingleArticle(id) {
   });
 }
 
-// Fetch single banner-highlight by id
 export function useSingleBannerHighlight(id) {
   return useQuery({
     queryKey: ['banner-highlight', id],
@@ -253,7 +298,6 @@ export function useSingleBannerHighlight(id) {
   });
 }
 
-// Fetch single developer by id
 export function useSingleDeveloper(id) {
   return useQuery({
     queryKey: ['developer', id],
@@ -262,7 +306,6 @@ export function useSingleDeveloper(id) {
   });
 }
 
-// Fetch single development by id
 export function useSingleDevelopment(id) {
   return useQuery({
     queryKey: ['development', id],
@@ -271,7 +314,6 @@ export function useSingleDevelopment(id) {
   });
 }
 
-// Fetch single enquiry by id
 export function useSingleEnquiry(id) {
   return useQuery({
     queryKey: ['enquiry', id],
@@ -280,7 +322,6 @@ export function useSingleEnquiry(id) {
   });
 }
 
-// Fetch single neighborhood by id
 export function useSingleNeighborhood(id) {
   return useQuery({
     queryKey: ['neighborhood', id],
@@ -289,7 +330,6 @@ export function useSingleNeighborhood(id) {
   });
 }
 
-// Fetch single sitemap by id
 export function useSingleSitemap(id) {
   return useQuery({
     queryKey: ['sitemap', id],

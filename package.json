@@ -10,9 +10,9 @@
   },
   "dependencies": {
     "@chakra-ui/next-js": "^2.1.4",
-    "@chakra-ui/react": "^2.7.0",
+    "@chakra-ui/react": "^3.22.0",
     "@choc-ui/chakra-autocomplete": "^5.2.8",
-    "@emotion/react": "^11.11.1",
+    "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.11.0",
     "@fontsource-variable/roboto-flex": "^5.0.8",
     "@fontsource/lato": "^5.0.17",
@@ -32,8 +32,8 @@
     "lts": "^1.2.0",
     "meilisearch": "^0.35.0",
     "next": "13.4.4",
-    "react": "18.2.0",
-    "react-dom": "18.2.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
     "reactfire": "^4.2.3",
     "typescript": "5.1.3"
   }

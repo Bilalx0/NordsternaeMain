@@ -7,7 +7,7 @@ export default function MagazineArticleTile({ article, featured, vspace = "4", m
   const [imageURL, setImageURL] = useState("url('/villa_placeholder_3.jpeg')");
   useEffect(() => {
     if (article && article.slug && article.tileImage) {
-      setImageURL("url('" + article.tileImage[0].downloadURL + "')");
+      setImageURL(article.tileImage);
     }    
   }, [article]);
 

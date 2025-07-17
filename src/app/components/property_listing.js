@@ -41,7 +41,7 @@ export default function PropertyListing({ listing, reference, vspace }) {
 
 
   return (
-    <Link href={`/property?reference=${listing?.reference || itemReference}`}>
+    <Link href={`/property?reference=${listing?.reference}`}>
       <Box
         w={{ base: "360px", md: "290px" }}
         maxW={isHomePage ? "290px" : undefined} 
