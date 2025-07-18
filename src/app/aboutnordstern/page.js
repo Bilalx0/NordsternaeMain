@@ -23,7 +23,7 @@ export default function Home() {
         <Text align="center" variant="blackSubtitle" my={2}>A LIFESTYLE ORIENTED FULL SERVICE REAL ESTATE BROKERAGE</Text>
         <Flex direction={{ base: "column-reverse", md: "row" }} pt={4}>
           <Flex direction="column" p={4} justify="center">
-            <Text variant="description">Nordstern is a tech-enabled luxury real estate brokerage specialising in matching individuals and families with properties that resonate with their desired lifestyles, whether it's a serene beachfront mansion, a vibrant urban apartment, or a golf view villa.</Text>
+            <Text variant="description">Nordstern is a tech-enabled luxury real estate brokerage specialising in matching individuals and families with properties that resonate with their desired lifestyles, whether it&apos;s a serene beachfront mansion, a vibrant urban apartment, or a golf view villa.</Text>
             <Button size="m" as="a" href="/enquiry?reference=" my={4} variant="bigCTA">CONNECT WITH US</Button>  
           </Flex>
           <Flex minW={{ base: "100%", md: "50%" }}>
