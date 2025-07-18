@@ -475,7 +475,7 @@ export default function PropertyDetailPage() {
               <Text as="u">Neighbourhood</Text>
             </Link>
             <Text fontSize="16px" my={4}>
-              One of the more established areas in Dubai, Jumeirah&apos;s ideal location near the beach makes it perfect for beachside living. Brimming with history, this area was previously a fisherman diving and trading site. Previously known as Chicago Beach, this locality is known for hosting well-off expats and...
+              One of the more established areas in Dubai, Jumeirah's ideal location near the beach makes it perfect for beachside living. Brimming with history, this area was previously a fisherman diving and trading site. Previously known as Chicago Beach, this locality is known for hosting well-off expats and...
             </Text>
             <Button as="a" href="/enquiry" variant="darkNoBackground">
               BOOK VALUATION
