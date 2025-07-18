@@ -6,13 +6,11 @@ import { useQueryClient } from '@tanstack/react-query'
 import PropertyListing from '../components/property_listing'
 import useCurrency from "../../utils/useCurrency" 
 import useMetric from "../../utils/useMetric"
-import { useSearchParams } from 'next/navigation'
 import { Drawer, DrawerOverlay, DrawerCloseButton, DrawerContent, DrawerBody } from '@chakra-ui/react'
 import { usePropertyByReference, useAgentByName, useAgentByLicenseNumber, useSimilarProperties } from "../../utils/useCMSHooks"
 
-export default function PropertyDetailPage() {
-  const searchParams = useSearchParams();
-  const propRef = searchParams.get("reference");
+export default function PropertyDetailPage({ params }) {
+  const { reference: propRef } = params; // Use dynamic route parameter instead of searchParams
   const queryClient = useQueryClient();
 
   const { userCurrency, getPriceInUserCurrency } = useCurrency();
@@ -194,15 +192,15 @@ export default function PropertyDetailPage() {
       <Box w={{ base: "100%", md: "80%", lg: "946px" }} mx="auto" px={{ base: 4, md: 0 }}>
         <Text my={8} textAlign="center" variant="articleTitle">{displayItem.title || ""}</Text>
         <Flex color="#636363" align="center" justify="center" wrap="wrap" gap={2}>
-          <Link href={`/properties?search=&listingType=${displayItem.listingType}`}>
+          <Link href="/properties">
             <Text px={2} as="u" textTransform="capitalize">{displayItem.listingType}</Text>
           </Link>
           <Image alt="breadcrumb separator" src="/icon_breadcrumb.svg" w="16px" h="16px" />
-          <Link href={`/properties?search=${encodeURIComponent(displayItem.community || "")}`}>
+          <Link href="/properties">
             <Text px={2} as="u" textTransform="capitalize">{displayItem.community}</Text>
           </Link>
           <Image alt="breadcrumb separator" src="/icon_breadcrumb.svg" w="16px" h="16px" />
-          <Link href={`/properties?search=${encodeURIComponent(displayItem.address || "")}`}>
+          <Link href="/properties">
             <Text px={2} as="u" textTransform="capitalize">{displayItem.address}</Text>
           </Link>
         </Flex>
@@ -360,7 +358,7 @@ export default function PropertyDetailPage() {
               <Flex direction={{ base: "column-reverse", md: "row" }} gap={6}>
                 <Flex direction="column" flex="1">
                   <Text fontSize="20px" fontWeight="bold">Property Representative</Text>
-                  <Link href={`/agent?licenseNumber=${displayAgent.licenseNumber}`}>
+                  <Link href={`/agent/${displayAgent.licenseNumber}`}>
                     <Text variant="robotoSearchBigTitle" textDecoration="underline" py={4}>
                       {displayAgent.name}
                     </Text>
@@ -471,11 +469,11 @@ export default function PropertyDetailPage() {
         >
           <Flex direction="column" flex="3" p={{ base: 4, md: 8 }}>
             <Text fontSize={{ base: "24px", md: "30px" }}>Palm Jumeirah</Text>
-            <Link href="/">
+            <Link href="/neighbourhoods">
               <Text as="u">Neighbourhood</Text>
             </Link>
             <Text fontSize="16px" my={4}>
-              One of the more established areas in Dubai, Jumeirah&apos;s ideal location near the beach makes it perfect for beachside living. Brimming with history, this area was previously a fisherman diving and trading site. Previously known as Chicago Beach, this locality is known for hosting well-off expats and...
+              One of the more established areas in Dubai, Jumeirah's ideal location near the beach makes it perfect for beachside living. Brimming with history, this area was previously a fisherman diving and trading site. Previously known as Chicago Beach, this locality is known for hosting well-off expats and...
             </Text>
             <Button as="a" href="/enquiry" variant="darkNoBackground">
               BOOK VALUATION
@@ -519,7 +517,7 @@ export default function PropertyDetailPage() {
         </Flex>
         <Button 
           as="a" 
-          href={`/properties?search=&propertyType=${displayItem?.propertyType || ""}`} 
+          href="/properties" 
           mt={6} 
           variant="light"
         >

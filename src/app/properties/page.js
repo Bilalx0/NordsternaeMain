@@ -3,118 +3,115 @@ import { useState, useEffect, useCallback } from 'react'
 import { Flex, Button, Text } from '@chakra-ui/react'
 import PropertyListing from '../components/property_listing'
 import SearchFilters from '../components/search_filters'
-import { useSearchParams } from 'next/navigation'
 import { useProperties as useCMSProperties } from "../../utils/useCMSHooks"
 
 export default function Home() {
-
-  // Only use the CMS properties hook
-  const searchParams = useSearchParams()
-
-  const showExclusive = searchParams.get("exclusiveProperties")
-  const showProperties = searchParams.get("showProperties")
-  const listingType = searchParams.get("listingType") || "sale"
-  const propertyTypes = searchParams.get("propertyType")?.split(",") || ["apartment", "villa", "townhouse", "duplex", "penthouse"] // Default array for split
-  const minPrice = searchParams.get("minPrice") || 100000
-  const maxPrice = searchParams.get("maxPrice") || 999999999
-  const bedrooms = searchParams.get("bedrooms") || 1
-  const minArea = searchParams.get("minArea") || 0
-  const maxArea = searchParams.get("maxArea") || 250000
-  const amenities = searchParams.get("amenities")?.split(",") || []
+  // Default filter values instead of searchParams
+  const [filters, setFilters] = useState({
+    listingType: "sale",
+    propertyTypes: ["apartment", "villa", "townhouse", "duplex", "penthouse"],
+    minPrice: 100000,
+    maxPrice: 999999999,
+    bedrooms: 1,
+    minArea: 0,
+    maxArea: 250000,
+    isExclusive: false,
+    propertyTypeFilter: undefined,
+    amenities: [],
+  });
 
   // Add a refresh key to force re-fetch
-  const [refreshKey, setRefreshKey] = useState(0)
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  // Construct query parameters for the CMS API based on searchParams
+  // Construct query parameters for the CMS API based on filters state
   const queryParams = {
-    listingType,
-    propertyType: propertyTypes.join(","), // Rejoin for the API call
-    minPrice,
-    maxPrice,
-    bedrooms,
-    minArea,
-    maxArea,
-    isExclusive: showExclusive === "true" ? true : undefined, // Only include if truthy
-    propertyTypeFilter: showProperties || undefined, // Use showProperties if it exists
+    listingType: filters.listingType,
+    propertyType: filters.propertyTypes.join(","),
+    minPrice: filters.minPrice,
+    maxPrice: filters.maxPrice,
+    bedrooms: filters.bedrooms,
+    minArea: filters.minArea,
+    maxArea: filters.maxArea,
+    isExclusive: filters.isExclusive ? true : undefined,
+    propertyTypeFilter: filters.propertyTypeFilter || undefined,
   };
 
-  const { data: cmsProperties, isLoading: isLoadingCMS, error: cmsError, refetch } = useCMSProperties(queryParams)
+  const { data: cmsProperties, isLoading: isLoadingCMS, error: cmsError, refetch } = useCMSProperties(queryParams);
 
-  const [isOpen, setIsOpen] = useState(false)
-  const [sortBy, setSortBy] = useState("featured")
-  const [localItems, setLocalItems] = useState([])
-  const [shownItems, setShownItems] = useState([])
-  const [shownIndex, setShownIndex] = useState(1)
+  const [isOpen, setIsOpen] = useState(false);
+  const [sortBy, setSortBy] = useState("featured");
+  const [localItems, setLocalItems] = useState([]);
+  const [shownItems, setShownItems] = useState([]);
+  const [shownIndex, setShownIndex] = useState(1);
 
   // Force refresh function
   const forceRefresh = useCallback(() => {
-    setRefreshKey(prev => prev + 1)
+    setRefreshKey(prev => prev + 1);
     if (refetch) {
-      refetch()
+      refetch();
     }
-    console.log("Force refresh triggered")
-  }, [refetch])
+    console.log("Force refresh triggered");
+  }, [refetch]);
+
+  // Update filters from SearchFilters component
+  const updateFilters = useCallback((newFilters) => {
+    setFilters(newFilters);
+    console.log("Filters updated:", newFilters);
+  }, []);
 
   // Debugging/Logging: Log errors for CMS
   useEffect(() => {
     if (cmsError) {
-      console.error("Error fetching properties from CMS:", cmsError)
+      console.error("Error fetching properties from CMS:", cmsError);
     }
-  }, [cmsError])
+  }, [cmsError]);
 
   useEffect(() => {
     if (cmsProperties) {
-      console.log(`CMS properties loaded: ${cmsProperties.length}`)
-      console.log("Raw CMS data:", cmsProperties) // Debug log
-      setLocalItems(cmsProperties.sort((a, b) => !!b.isFeatured - !!a.isFeatured))
+      console.log(`CMS properties loaded: ${cmsProperties.length}`);
+      console.log("Raw CMS data:", cmsProperties);
+      setLocalItems(cmsProperties.sort((a, b) => !!b.isFeatured - !!a.isFeatured));
     }
-  }, [cmsProperties]) // Only depends on cmsProperties now
+  }, [cmsProperties]);
 
   // Update shownItems based on localItems and shownIndex
   useEffect(() => {
-    setShownItems(localItems.slice(0, shownIndex * 12))
-    console.log(`Shown items updated: ${shownItems.length}`)
-  }, [localItems, shownIndex])
+    setShownItems(localItems.slice(0, shownIndex * 12));
+    console.log(`Shown items updated: ${shownItems.length}`);
+  }, [localItems, shownIndex]);
 
   const loadMore = () => {
-    // Only load more if there are more items to show from localItems
     if (shownIndex * 12 < localItems.length) {
-      setShownIndex(prevIndex => prevIndex + 1)
-      console.log(`Loading more items. New shownIndex: ${shownIndex + 1}`)
+      setShownIndex(prevIndex => prevIndex + 1);
+      console.log(`Loading more items. New shownIndex: ${shownIndex + 1}`);
     } else {
-      console.log("No more items to load.")
+      console.log("No more items to load.");
     }
-  }
-
-  useEffect(() => {
-    console.log("Search params updated. New API call might be triggered by useCMSProperties.")
-  }, [searchParams, listingType, bedrooms, propertyTypes, minPrice, maxPrice, minArea, maxArea, showExclusive, showProperties]);
+  };
 
   const getSorted = useCallback((sortType) => {
-    let sortedItems = [...localItems]
+    let sortedItems = [...localItems];
     if (sortType === "featured") {
-      sortedItems.sort((a, b) => !!b.isFeatured - !!a.isFeatured)
+      sortedItems.sort((a, b) => !!b.isFeatured - !!a.isFeatured);
     } else if (sortType === "latest") {
       sortedItems.sort((a, b) => {
-        // Assuming your CMS properties will also have `updatedAt`
-        // or a similar timestamp field.
         const timestampA = (a.updatedAt ? new Date(a.updatedAt).getTime() : 0);
         const timestampB = (b.updatedAt ? new Date(b.updatedAt).getTime() : 0);
         return timestampB - timestampA;
-      })
+      });
     }
-    setSortBy(sortType)
-    setLocalItems(sortedItems)
-    console.log(`Items sorted by: ${sortType}`)
-  }, [localItems]); // Added localItems to dependency array for useCallback
+    setSortBy(sortType);
+    setLocalItems(sortedItems);
+    console.log(`Items sorted by: ${sortType}`);
+  }, [localItems]);
 
   // Show loading state for CMS
   if (isLoadingCMS) {
     return (
       <Flex direction="column" justify="center" align="center" h="100vh">
-        <Text>Loading properties...</Text> {/* Simplified text */}
+        <Text>Loading properties...</Text>
       </Flex>
-    )
+    );
   }
 
   // Handle error state
@@ -123,9 +120,9 @@ export default function Home() {
       <Flex direction="column" justify="center" align="center" h="100vh">
         <Text color="red.500">Error loading properties: {cmsError.message || "An unknown error occurred."}</Text>
       </Flex>
-    )
+    );
   }
-  
+
   // Show "No Properties Found" if localItems is empty after loading
   if (!isLoadingCMS && !cmsError && localItems.length === 0) {
     return (
@@ -133,15 +130,15 @@ export default function Home() {
         <Text variant="articleTitle">No Properties Found.</Text>
         <Text fontSize="12px">Try adjusting your filters.</Text>
       </Flex>
-    )
+    );
   }
 
   return (
     <Flex direction="column" justify="center" align="center" w={{ base: "100vw", md: "80vw", lg: "933px" }} mx="auto" my={8}>
-      <SearchFilters openFilters={isOpen} onClose={() => setIsOpen(false)} updateResults={setLocalItems} />
+      <SearchFilters openFilters={isOpen} onClose={() => setIsOpen(false)} updateResults={updateFilters} />
       <Flex direction="column" w={{ base: "100vw", md: "80vw", lg: "946px" }} mx="auto">
         <Flex direction="column" align="center">
-          <Text variant="articleTitle">Properties for {listingType}</Text>
+          <Text variant="articleTitle">Properties for {filters.listingType}</Text>
           <Text fontSize="12px">
             {localItems.length > 0 ? `${localItems.length}+ PROPERTIES` : "No Properties Found."}
           </Text>
@@ -150,7 +147,6 @@ export default function Home() {
         <Flex align="center" justify="space-between" m={4} mb={2} grow="grow">
           <Button size="s" variant="bright" onClick={() => setIsOpen(true)}>FILTERS</Button>
           
-          {/* Add refresh button for debugging */}
           <Button size="s" variant="outline" onClick={forceRefresh}>
             REFRESH ({localItems.length})
           </Button>
@@ -174,5 +170,5 @@ export default function Home() {
         </Flex>
       </Flex>
     </Flex>
-  )
+  );
 }
