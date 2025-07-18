@@ -1,32 +1,29 @@
-'use client'
-import { useState, useEffect } from 'react'
-import { Flex, Button, Text, Image } from '@chakra-ui/react'
-import { useSearchParams } from 'next/navigation'
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Flex, Button, Text, Image } from '@chakra-ui/react';
 import { useAgentByLicenseNumber, useProperties } from '../../utils/useCMSHooks'
 import PropertyListing from '../components/property_listing'
 
-export default function Home() {
-  const searchParams = useSearchParams();
-  const agentRef = searchParams.get("licenseNumber");
+export default function Home({ params }) {
+  const agentRef = params.licenseNumber;
   const { data: agent, isLoading: isLoadingAgent, error: agentError } = useAgentByLicenseNumber(agentRef);
   const { data: properties, isLoading: isLoadingProperties, error: propertiesError } = useProperties();
   const [agentProperties, setAgentProperties] = useState([]);
-  const [chosenImage, setChosenImage] = useState("/banner_sell_with_us.jpg");
+  const [chosenImage, setChosenImage] = useState('/banner_sell_with_us.jpg');
 
   // Log agent and set image
   useEffect(() => {
     if (agent) {
       console.log(`[AgentProfile] Fetched agent for licenseNumber=${agentRef}:`, agent);
-      const photoUrl =
-        agent.headShot ||
-        agent.photo
+      const photoUrl = agent.headShot || agent.photo;
       setChosenImage(photoUrl);
       console.log(`[AgentProfile] Set chosenImage for agent ${agent.name || 'unknown'}: ${photoUrl}`);
     }
     if (agentError) {
       console.error(`[AgentProfile] Error fetching agent for licenseNumber=${agentRef}:`, agentError.message);
     }
-  }, [agent, agentError, agentRef]);
+  }, [agent, agentError]);
 
   // Filter properties by agent id
   useEffect(() => {
@@ -65,17 +62,17 @@ export default function Home() {
 
   return (
     <Flex direction="column" w="100vw">
-      <Flex direction="column" w={{ base: "100vw", md: "80vw", lg: "946px" }} mx="auto" p={4} justify="center">
+      <Flex direction="column" w={{ base: '100vw', md: '80vw', lg: '946px' }} mx="auto" p={4} justify="center">
         <Text mt={4} align="center" variant="articleTitle">{agent.name || 'Unknown Agent'}</Text>
         <Text align="center" variant="blackSubtitle">{agent.jobTitle || 'Not specified'}</Text>
-        <Flex direction={{ base: "column", md: "row" }} my={8}>
-          <Flex minW={{ base: "100%", md: "440px" }} maxW="444px">
-            <Image 
-              src={chosenImage} 
-              w="100%" 
-              h="100%" 
-              maxW="440px" 
-              alt={`Photo of ${agent.name || 'agent'}`} 
+        <Flex direction={{ base: 'column', md: 'row' }} my={8}>
+          <Flex minW={{ base: '100%', md: '440px' }} maxW="444px">
+            <Image
+              src={chosenImage}
+              w="100%"
+              h="100%"
+              maxW="440px"
+              alt={`Photo of ${agent.name || 'agent'}`}
             />
           </Flex>
           <Flex direction="column" p={4} align="center">
@@ -89,7 +86,8 @@ export default function Home() {
                 {agent.languages && Array.isArray(agent.languages) && agent.languages.length > 0 ? (
                   agent.languages.map((lang, idx) => (
                     <Text key={lang} variant="latoBoldText" px={1}>
-                      {lang}{idx < agent.languages.length - 1 ? ',' : ''}
+                      {lang}
+                      {idx < agent.languages.length - 1 ? ',' : ''}
                     </Text>
                   ))
                 ) : (
@@ -97,15 +95,13 @@ export default function Home() {
                 )}
               </Flex>
             </Flex>
-            <Text 
-              dangerouslySetInnerHTML={{ __html: agent.introduction || 'No introduction available' }} 
-            />
+            <Text dangerouslySetInnerHTML={{ __html: agent.introduction || 'No introduction available' }} />
             <Flex color="#000000" wrap="wrap" alignSelf="flex-start">
-              <Button 
-                my={2} 
-                as="a" 
-                href={agent.phone ? `tel:${agent.phone}` : '#'} 
-                size="m" 
+              <Button
+                my={2}
+                as="a"
+                href={agent.phone ? `tel:${agent.phone}` : '#'}
+                size="m"
                 variant="bigCTA"
                 isDisabled={!agent.phone}
               >
@@ -116,19 +112,19 @@ export default function Home() {
         </Flex>
       </Flex>
 
-      <Flex direction="column" w={{ base: "100vw", md: "80vw", lg: "946px" }} mx="auto">
+      <Flex direction="column" w={{ base: '100vw', md: '80vw', lg: '946px' }} mx="auto">
         <Text fontSize="32px" align="center">Agent Properties</Text>
-        <Flex direction={{ base: "column", md: "row" }} wrap="wrap" p={2} align="center" justify="center">
+        <Flex direction={{ base: 'column', md: 'row' }} wrap="wrap" p={2} align="center" justify="center">
           {propertiesError ? (
             <Text color="red.500">Error loading properties: {propertiesError.message}</Text>
           ) : agentProperties.length > 0 ? (
             agentProperties.map(item => (
-              <PropertyListing 
-                key={item.reference} 
-                reference={item.reference} 
-                listing={item} 
-                wide={{ base: "true", md: "false" }} 
-                vspace={4} 
+              <PropertyListing
+                key={item.reference}
+                reference={item.reference}
+                listing={item}
+                wide={{ base: 'true', md: 'false' }}
+                vspace={4}
               />
             ))
           ) : (
@@ -137,5 +133,5 @@ export default function Home() {
         </Flex>
       </Flex>
     </Flex>
-  )
+  );
 }
