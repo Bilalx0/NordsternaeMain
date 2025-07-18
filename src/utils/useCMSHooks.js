@@ -6,9 +6,9 @@ async function fetchCmsDataById(resource, id) {
     console.warn(`[fetchCmsDataById] No ID provided for resource: ${resource}`);
     return null;
   }
-  const url = `/api/cms/${resource}/${id}`;
+  const url = `/api/cms/${resource}/${id}?t=${Date.now()}`;
   console.log(`[fetchCmsDataById] Fetching from URL: ${url}`);
-  const response = await fetch(url);
+  const response = await fetch(url, { cache: 'no-store' });
   if (!response.ok) {
     console.error(`[fetchCmsDataById] Failed to fetch ${resource} with ID ${id}: ${response.status} ${response.statusText}`);
     throw new Error(`Failed to fetch ${resource} with ID ${id}: ${response.statusText}`);
@@ -18,14 +18,14 @@ async function fetchCmsDataById(resource, id) {
   return data;
 }
 
-async function fetchCmsDataByField(resource, fieldName, fieldValue) {
+export default async function fetchCmsDataByField(resource, fieldName, fieldValue) {
   if (!fieldValue) {
     console.warn(`[fetchCmsDataByField] No ${fieldName} provided for resource: ${resource}`);
     return null;
   }
-  const url = `/api/cms/${resource}?${fieldName}=${encodeURIComponent(fieldValue)}`;
+  const url = `/api/cms/${resource}?${fieldName}=${encodeURIComponent(fieldValue)}&t=${Date.now()}`;
   console.log(`[fetchCmsDataByField] Fetching from URL: ${url}`);
-  const response = await fetch(url);
+  const response = await fetch(url, { cache: 'no-store' });
   console.log(`[fetchCmsDataByField] Response status: ${response.status} ${response.statusText}`);
   if (!response.ok) {
     console.error(`[fetchCmsDataByField] Failed to fetch ${resource} by ${fieldName}=${fieldValue}: ${response.status} ${response.statusText}`);
@@ -34,15 +34,12 @@ async function fetchCmsDataByField(resource, fieldName, fieldValue) {
   const data = await response.json();
   console.log(`[fetchCmsDataByField] Raw response for ${resource} by ${fieldName}=${fieldValue}:`, data);
 
-  // Handle both object and array responses
   if (data && typeof data === 'object') {
     if (Array.isArray(data)) {
-      // If response is an array, return the first item with matching fieldValue or null
       const matchingItem = data.find(item => item[fieldName] === fieldValue) || null;
       console.log(`[fetchCmsDataByField] Found ${matchingItem ? 'matching' : 'no matching'} item in array for ${fieldName}=${fieldValue}:`, matchingItem);
       return matchingItem;
     }
-    // If response is an object and matches fieldValue, return it
     if (data[fieldName] === fieldValue) {
       console.log(`[fetchCmsDataByField] Returning single object for ${fieldName}=${fieldValue}:`, data);
       return data;
@@ -54,7 +51,6 @@ async function fetchCmsDataByField(resource, fieldName, fieldValue) {
   return null;
 }
 
-// Fetch single property by reference
 export function usePropertyByReference(reference) {
   return useQuery({
     queryKey: ['propertyByReference', reference],
@@ -78,7 +74,6 @@ export function usePropertyByReference(reference) {
   });
 }
 
-// Fetch single agent by name (case-insensitive)
 export function useAgentByName(name) {
   return useQuery({
     queryKey: ['agentByName', name?.toLowerCase()],
@@ -100,7 +95,6 @@ export function useAgentByName(name) {
   });
 }
 
-// Fetch single agent by license number
 export function useAgentByLicenseNumber(licenseNumber) {
   return useQuery({
     queryKey: ['agentByLicenseNumber', licenseNumber],
@@ -122,7 +116,6 @@ export function useAgentByLicenseNumber(licenseNumber) {
   });
 }
 
-// Other hooks remain unchanged
 export function useProperties(queryParams = {}) {
   return useQuery({
     queryKey: ['properties', queryParams],
@@ -133,18 +126,20 @@ export function useProperties(queryParams = {}) {
           searchParams.append(key, value);
         }
       });
+      searchParams.append('t', Date.now()); // Cache-busting
       const queryString = searchParams.toString();
-      const url = queryString ? `/api/cms/properties?${queryString}` : '/api/cms/properties';
+      const url = queryString ? `/api/cms/properties?${queryString}` : `/api/cms/properties?t=${Date.now()}`;
       console.log('[useProperties] Fetching from URL:', url);
-      const response = await fetch(url);
+      const response = await fetch(url, { cache: 'no-store' });
       if (!response.ok) throw new Error('Failed to fetch all properties');
       const data = await response.json();
       console.log('[useProperties] Fetched properties count:', data.length);
       return data;
     },
-    staleTime: 1000 * 60 * 5,
-    cacheTime: 1000 * 60 * 10,
+    staleTime: 0, // Disable caching
+    cacheTime: 0, // Disable caching
     refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -161,10 +156,11 @@ export function useSimilarProperties(propertyType, excludeReference = null) {
       if (excludeReference) {
         searchParams.append('excludeReference', excludeReference);
       }
+      searchParams.append('t', Date.now()); // Cache-busting
       const queryString = searchParams.toString();
       const url = `/api/cms/properties?${queryString}`;
       console.log('[useSimilarProperties] Fetching from URL:', url);
-      const response = await fetch(url);
+      const response = await fetch(url, { cache: 'no-store' });
       if (!response.ok) {
         throw new Error(`Failed to fetch similar properties: ${response.statusText}`);
       }
@@ -173,8 +169,10 @@ export function useSimilarProperties(propertyType, excludeReference = null) {
       return data;
     },
     enabled: !!propertyType,
-    staleTime: 1000 * 60 * 5,
-    cacheTime: 1000 * 60 * 10,
+    staleTime: 0, // Disable caching
+    cacheTime: 0, // Disable caching
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -182,10 +180,15 @@ export function useAgents() {
   return useQuery({
     queryKey: ['agents'],
     queryFn: async () => {
-      const response = await fetch('/api/cms/agents');
+      const url = `/api/cms/agents?t=${Date.now()}`;
+      const response = await fetch(url, { cache: 'no-store' });
       if (!response.ok) throw new Error('Failed to fetch all agents');
       return response.json();
     },
+    staleTime: 0, // Disable caching
+    cacheTime: 0, // Disable caching
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -193,10 +196,15 @@ export function useArticles() {
   return useQuery({
     queryKey: ['articles'],
     queryFn: async () => {
-      const response = await fetch('/api/cms/articles');
+      const url = `/api/cms/articles?t=${Date.now()}`;
+      const response = await fetch(url, { cache: 'no-store' });
       if (!response.ok) throw new Error('Failed to fetch all articles');
       return response.json();
     },
+    staleTime: 0, // Disable caching
+    cacheTime: 0, // Disable caching
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -204,10 +212,15 @@ export function useBannerHighlights() {
   return useQuery({
     queryKey: ['banner-highlights'],
     queryFn: async () => {
-      const response = await fetch('/api/cms/banner-highlights');
+      const url = `/api/cms/banner-highlights?t=${Date.now()}`;
+      const response = await fetch(url, { cache: 'no-store' });
       if (!response.ok) throw new Error('Failed to fetch all banner highlights');
       return response.json();
     },
+    staleTime: 0, // Disable caching
+    cacheTime: 0, // Disable caching
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -215,10 +228,15 @@ export function useDevelopers() {
   return useQuery({
     queryKey: ['developers'],
     queryFn: async () => {
-      const response = await fetch('/api/cms/developers');
+      const url = `/api/cms/developers?t=${Date.now()}`;
+      const response = await fetch(url, { cache: 'no-store' });
       if (!response.ok) throw new Error('Failed to fetch all developers');
       return response.json();
     },
+    staleTime: 0, // Disable caching
+    cacheTime: 0, // Disable caching
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -226,10 +244,15 @@ export function useDevelopments() {
   return useQuery({
     queryKey: ['developments'],
     queryFn: async () => {
-      const response = await fetch('/api/cms/developments');
+      const url = `/api/cms/developments?t=${Date.now()}`;
+      const response = await fetch(url, { cache: 'no-store' });
       if (!response.ok) throw new Error('Failed to fetch all developments');
       return response.json();
     },
+    staleTime: 0, // Disable caching
+    cacheTime: 0, // Disable caching
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -237,10 +260,15 @@ export function useEnquiries() {
   return useQuery({
     queryKey: ['enquiries'],
     queryFn: async () => {
-      const response = await fetch('/api/cms/enquiries');
+      const url = `/api/cms/enquiries?t=${Date.now()}`;
+      const response = await fetch(url, { cache: 'no-store' });
       if (!response.ok) throw new Error('Failed to fetch all enquiries');
       return response.json();
     },
+    staleTime: 0, // Disable caching
+    cacheTime: 0, // Disable caching
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -248,10 +276,15 @@ export function useNeighborhoods() {
   return useQuery({
     queryKey: ['neighborhoods'],
     queryFn: async () => {
-      const response = await fetch('/api/cms/neighborhoods');
+      const url = `/api/cms/neighborhoods?t=${Date.now()}`;
+      const response = await fetch(url, { cache: 'no-store' });
       if (!response.ok) throw new Error('Failed to fetch all neighborhoods');
       return response.json();
     },
+    staleTime: 0, // Disable caching
+    cacheTime: 0, // Disable caching
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -259,10 +292,15 @@ export function useSitemaps() {
   return useQuery({
     queryKey: ['sitemaps'],
     queryFn: async () => {
-      const response = await fetch('/api/cms/sitemaps');
+      const url = `/api/cms/sitemaps?t=${Date.now()}`;
+      const response = await fetch(url, { cache: 'no-store' });
       if (!response.ok) throw new Error('Failed to fetch all sitemaps');
       return response.json();
     },
+    staleTime: 0, // Disable caching
+    cacheTime: 0, // Disable caching
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -271,6 +309,10 @@ export function useSingleProperty(id) {
     queryKey: ['property', id],
     queryFn: () => fetchCmsDataById('properties', id),
     enabled: !!id,
+    staleTime: 0, // Disable caching
+    cacheTime: 0, // Disable caching
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -279,6 +321,10 @@ export function useSingleAgent(id) {
     queryKey: ['agent', id],
     queryFn: () => fetchCmsDataById('agents', id),
     enabled: !!id,
+    staleTime: 0, // Disable caching
+    cacheTime: 0, // Disable caching
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -287,6 +333,10 @@ export function useSingleArticle(id) {
     queryKey: ['article', id],
     queryFn: () => fetchCmsDataById('articles', id),
     enabled: !!id,
+    staleTime: 0, // Disable caching
+    cacheTime: 0, // Disable caching
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -295,6 +345,10 @@ export function useSingleBannerHighlight(id) {
     queryKey: ['banner-highlight', id],
     queryFn: () => fetchCmsDataById('banner-highlights', id),
     enabled: !!id,
+    staleTime: 0, // Disable caching
+    cacheTime: 0, // Disable caching
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -303,6 +357,10 @@ export function useSingleDeveloper(id) {
     queryKey: ['developer', id],
     queryFn: () => fetchCmsDataById('developers', id),
     enabled: !!id,
+    staleTime: 0, // Disable caching
+    cacheTime: 0, // Disable caching
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -311,6 +369,10 @@ export function useSingleDevelopment(id) {
     queryKey: ['development', id],
     queryFn: () => fetchCmsDataById('developments', id),
     enabled: !!id,
+    staleTime: 0, // Disable caching
+    cacheTime: 0, // Disable caching
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -319,6 +381,10 @@ export function useSingleEnquiry(id) {
     queryKey: ['enquiry', id],
     queryFn: () => fetchCmsDataById('enquiries', id),
     enabled: !!id,
+    staleTime: 0, // Disable caching
+    cacheTime: 0, // Disable caching
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -327,6 +393,10 @@ export function useSingleNeighborhood(id) {
     queryKey: ['neighborhood', id],
     queryFn: () => fetchCmsDataById('neighborhoods', id),
     enabled: !!id,
+    staleTime: 0, // Disable caching
+    cacheTime: 0, // Disable caching
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -335,5 +405,9 @@ export function useSingleSitemap(id) {
     queryKey: ['sitemap', id],
     queryFn: () => fetchCmsDataById('sitemaps', id),
     enabled: !!id,
+    staleTime: 0, // Disable caching
+    cacheTime: 0, // Disable caching
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 }

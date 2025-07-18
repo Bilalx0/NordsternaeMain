@@ -16,12 +16,24 @@ export async function GET(request) {
     if (reference) {
       const filteredData = Array.isArray(data) ? data.find(item => item.reference === reference) || null : data;
       console.log(`[API GET /api/cms/properties] Filtered data for reference ${reference}:`, filteredData);
-      return NextResponse.json(filteredData);
+      return NextResponse.json(filteredData, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
+    });
     }
 
     // Return all properties if no reference is provided
     console.log(`[API GET /api/cms/properties] Returning all properties:`, data);
-    return NextResponse.json(data);
+    return NextResponse.json(data, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
+    });
   } catch (error) {
     console.error(`[API GET /api/cms/properties] Error: ${error.message}`);
     return NextResponse.json({ error: error.message }, { status: 500 });

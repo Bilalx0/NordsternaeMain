@@ -1,33 +1,38 @@
 'use client'
-import { useState, useEffect } from 'react'
-import { Flex, Button, Text, Center  } from '@chakra-ui/react'
+import { useState, useEffect, useMemo } from 'react'
+import { Flex, Box, Text, Button } from '@chakra-ui/react'
 import DevelopmentTile from '../components/development_tile'
-import useFirebaseCollection from "../../utils/useFirebaseCollection"
+import { useDevelopments } from '../../utils/useCMSHooks' // Adjust the import path as needed
 
-export default function Home() {
-  const { items, loadItems } = useFirebaseCollection("developments");
+export default function FeaturedDevelopments() {
+  const { data: items = [], isLoading } = useDevelopments();
   const [localItems, setLocalItems] = useState([]);
 
-  useEffect(() => {
-    loadItems();
-  }, []);
-
-  useEffect(() => {
-    //sets localitems after excluding the placeholder development
-    setLocalItems(items.filter(x => x.id !== 'u6QlxuYQmahgs8z65dyP'));
+  // Memoize filtered items to ensure stability
+  const filteredItems = useMemo(() => {
+    return items.filter(x => x.id !== 'u6QlxuYQmahgs8z65dyP' && !!x.featureOnHomepage);
   }, [items]);
 
+  useEffect(() => {
+    // Update state only if filteredItems has changed
+    setLocalItems(prev => JSON.stringify(prev) !== JSON.stringify(filteredItems) ? filteredItems : prev);
+  }, [filteredItems]);
+
+  if (isLoading) {
+    return <Flex justify="center" align="center" h="200px">Loading...</Flex>;
+  }
+
   return (
-    <Flex direction="column" w={{ base: "100vw", md: "80vw", lg: "946px" }} mx="auto" my={8}>
-      <Text p={2} variant='articleTitle' textAlign="center">Developments</Text>
-      <Text p={2} variant="blackSubtitle" align="center">Discover the best communities & buildings where to live and work in United Arab Emirates</Text>
-      <Text p={2} my={4} variant="blackSubtitle" align="center">260 Properties</Text>
-      <Flex justify="center" align="center" wrap="wrap">
-        {localItems.length && localItems.map((item) => (<DevelopmentTile key={item.id} content={item} slug={item.urlSlug} />))}
+    <Box bg='#FFFFFF'>
+      <Flex direction="column" w={{ base: "100vw", md: "80vw", lg: "946px"}} px={2} py="50px" m="auto">
+        <Text variant="featuredItemsHeader" my={2}>Featured Developments</Text>
+        <Flex overflow="scroll" justify="space-between">
+          {localItems.length && localItems.map((item) => (
+            <DevelopmentTile key={item.id} content={item} slug={item.urlSlug} />
+          ))}
+        </Flex>
+        <Button m={8} alignSelf="center" as="a" href={`/developments`} variant="light">VIEW ALL</Button>
       </Flex>
-      <Center p={8}>
-          <Button variant="light" m={4}>LOAD MORE</Button>
-      </Center>
-    </Flex>
+    </Box>
   )
 }

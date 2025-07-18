@@ -17,12 +17,20 @@ export default function DevelopmentTile({ content, slug }) {
         _hover={{
           boxShadow: "rgb(0 0 0 / 10%) 0px 0px 10px 5px",
         }}>
-        {content && content.images && (<Flex>
-            <Box bg={`url('${content.images[0].downloadURL}')`} bgSize="cover" bgPosition="center" width="100%" height="420px">
+        {content && content.images && content.images[0] && (
+          <Flex>
+            <Box 
+              bg={`${content.images || content.images[0]}`} 
+              bgSize="cover" 
+              bgPosition="center" 
+              width="100%" 
+              height="420px"
+            >
               <Text p={2} fontSize="22px" fontWeight="600" h={10} color="#FDF9F3">{content.title}</Text>
             </Box>
-          </Flex>)}
-       {content && (
+          </Flex>
+        )}
+        {content && (
           <Flex direction="column" textAlign="left" minW="240" my={4}>
             <Text my={2} variant="tileItemTitle">{content.propertyType}</Text>
             <Text my={1} variant="tileItemText">{content.area}</Text>

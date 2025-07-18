@@ -30,12 +30,24 @@ export async function GET(request) {
       }
 
       console.log(`[API GET /api/cms/agents] Filtered data for ${field}=${value}:`, filteredData);
-      return NextResponse.json(filteredData);
+      return NextResponse.json(filteredData , {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
+    });
     }
 
     // Return all agents if no query parameters are provided
     console.log(`[API GET /api/cms/agents] Returning all agents:`, data);
-    return NextResponse.json(data);
+    return NextResponse.json(data, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
+    });
   } catch (error) {
     console.error(`[API GET /api/cms/agents] Error: ${error.message}`);
     return NextResponse.json({ error: error.message }, { status: 500 });
